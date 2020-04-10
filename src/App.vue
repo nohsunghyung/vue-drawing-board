@@ -14,35 +14,36 @@
 					<input
 						type="range"
 						class="js-range"
+						:value="lineWidth"
 						min="1"
 						max="10"
-						step="0.5"
-						value="2.5"
+						step="1"
 						@change="onChangeBrush"
 					/>
 				</div>
 				<div class="btn-group">
-					<button type="button" class="btn btn-fill">Fill</button>
+					<button
+						type="button"
+						class="btn btn-fill"
+						:class="{ active: isFill }"
+						@click="onFillActive"
+					>
+						Fill
+					</button>
 					<a href="javascript:void(0);" class="btn btn-download">Download</a>
-					<button type="button" class="btn btn-clear">Reset</button>
+					<button type="button" class="btn btn-clear" @click="onResetFn">
+						Reset
+					</button>
 				</div>
-				<ul class="color-list" @click="colorChange">
-					<li class="color" style="background-color: #000000;">
-						<i class="icon"></i>
-					</li>
-					<li class="color" style="background-color: #ff0000;">
-						<i class="icon"></i>
-					</li>
-					<li class="color" style="background-color: #000cff;">
-						<i class="icon"></i>
-					</li>
-					<li class="color" style="background-color: #00ff2a;">
-						<i class="icon"></i>
-					</li>
-					<li class="color" style="background-color: #fff000;">
-						<i class="icon"></i>
-					</li>
-					<li class="color" style="background-color: #ff8400;">
+				<ul class="color-list">
+					<li
+						class="color"
+						v-for="(item, index) in colors"
+						:key="index"
+						:style="{ 'background-color': item }"
+						:class="{ active: colorActive == index }"
+						@click="colorChange(item, index)"
+					>
 						<i class="icon"></i>
 					</li>
 				</ul>
@@ -57,19 +58,22 @@ export default {
 		return {
 			ctx: null,
 			isDrawing: false,
+			isFill: false,
+			colorActive: 0,
 			canvasStyle: {
 				width: 700,
 				height: 700,
 				color: '#222',
 			},
-			colors: [{}],
+			lineWidth: 2,
+			colors: ['#000', '#ff0000', '#000cff', '#00ff2a', '#fff000', '#ff8400'],
 		};
 	},
 	methods: {
 		canvasInit(el) {
 			el.strokeStyle = this.canvasStyle.color;
 			el.fillStyle = this.canvasStyle.color;
-			el.lineWidth = 2;
+			el.lineWidth = this.lineWidth;
 		},
 		onMouseMoveFn(event) {
 			const x = event.offsetX;
@@ -84,6 +88,14 @@ export default {
 		},
 		onMouseDownFn() {
 			this.isDrawing = true;
+			if (this.isFill) {
+				this.ctx.fillRect(
+					0,
+					0,
+					this.canvasStyle.width,
+					this.canvasStyle.height,
+				);
+			}
 		},
 		onMouseUpFn() {
 			this.isDrawing = false;
@@ -92,8 +104,16 @@ export default {
 			const value = e.target.value;
 			this.ctx.lineWidth = value;
 		},
-		colorChange(e) {
-			console.dir(e.target);
+		colorChange(color, index) {
+			this.colorActive = index;
+			this.ctx.strokeStyle = color;
+			this.ctx.fillStyle = color;
+		},
+		onFillActive() {
+			this.isFill = !this.isFill;
+		},
+		onResetFn() {
+			this.ctx.clearRect(0, 0, this.canvasStyle.width, this.canvasStyle.height);
 		},
 	},
 	mounted() {
