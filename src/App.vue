@@ -7,10 +7,11 @@
 				@mousemove="onMouseMoveFn"
 				@mousedown="onMouseDownFn"
 				@mouseup="onMouseUpFn"
+				@contextmenu.prevent
 			></canvas>
 			<div class="handle-container">
 				<div class="brush">
-					<p>브러쉬 조절</p>
+					<h3>Brush size {{ lineWidth }}</h3>
 					<input
 						type="range"
 						class="js-range"
@@ -21,6 +22,31 @@
 						@change="onChangeBrush"
 					/>
 				</div>
+				<ul class="color-list" v-if="colors.length">
+					<li
+						class="color"
+						v-for="(item, index) in colors"
+						:key="index"
+						:style="{ 'background-color': item || '#000' }"
+						:class="{
+							active: colorActive === index,
+							white: item === '#ffffff',
+						}"
+						@click="colorChange(item, index)"
+					>
+						<i class="icon"></i>
+					</li>
+				</ul>
+				<div class="color-edit">
+					<h3>Edit Color</h3>
+					<form @submit.prevent="addColorFn">
+						<input type="text" placeholder="ex) #f1f1f1" v-model="addColor" />
+						<button type="submit">컬러추가</button>
+						<button type="button" @click="onColorDelete">
+							선택된 컬러삭제
+						</button>
+					</form>
+				</div>
 				<div class="btn-group">
 					<button
 						type="button"
@@ -30,23 +56,16 @@
 					>
 						Fill
 					</button>
-					<a href="javascript:void(0);" class="btn btn-download">Download</a>
+					<a
+						href="javascript:void(0);"
+						class="btn btn-download"
+						@click="onSaveBtn"
+						>Download</a
+					>
 					<button type="button" class="btn btn-clear" @click="onResetFn">
 						Reset
 					</button>
 				</div>
-				<ul class="color-list">
-					<li
-						class="color"
-						v-for="(item, index) in colors"
-						:key="index"
-						:style="{ 'background-color': item }"
-						:class="{ active: colorActive == index }"
-						@click="colorChange(item, index)"
-					>
-						<i class="icon"></i>
-					</li>
-				</ul>
 			</div>
 		</div>
 	</div>
@@ -60,19 +79,30 @@ export default {
 			isDrawing: false,
 			isFill: false,
 			colorActive: 0,
+			colorIdx: 0,
 			canvasStyle: {
-				width: 700,
+				width: 1000,
 				height: 700,
 				color: '#222',
 			},
 			lineWidth: 2,
-			colors: ['#000', '#ff0000', '#000cff', '#00ff2a', '#fff000', '#ff8400'],
+			colors: [
+				'#222222',
+				'#ffffff',
+				'#ff0000',
+				'#000cff',
+				'#00ff2a',
+				'#fff000',
+				'#ff8400',
+			],
+			addColor: '',
 		};
 	},
 	methods: {
 		canvasInit(el) {
 			el.strokeStyle = this.canvasStyle.color;
-			el.fillStyle = this.canvasStyle.color;
+			el.fillStyle = '#ffffff';
+			this.ctx.fillRect(0, 0, this.canvasStyle.width, this.canvasStyle.height);
 			el.lineWidth = this.lineWidth;
 		},
 		onMouseMoveFn(event) {
@@ -102,18 +132,40 @@ export default {
 		},
 		onChangeBrush(e) {
 			const value = e.target.value;
+			this.lineWidth = value;
 			this.ctx.lineWidth = value;
 		},
 		colorChange(color, index) {
 			this.colorActive = index;
 			this.ctx.strokeStyle = color;
 			this.ctx.fillStyle = color;
+			this.colorIdx = index;
 		},
 		onFillActive() {
 			this.isFill = !this.isFill;
 		},
 		onResetFn() {
 			this.ctx.clearRect(0, 0, this.canvasStyle.width, this.canvasStyle.height);
+		},
+		addColorFn() {
+			this.colors.push(this.addColor);
+			this.addColor = '';
+		},
+		onColorDelete() {
+			this.colors.splice(this.colorIdx, 1);
+			if (this.colorIdx !== 0) {
+				this.colorChange(this.colors[this.colorIdx - 1], this.colorIdx - 1);
+			} else {
+				this.colorChange(this.colors[this.colorIdx], this.colorIdx);
+			}
+		},
+		onSaveBtn() {
+			const canvas = this.$refs.canvasEl;
+			const imageUrl = canvas.toDataURL('image/png');
+			const link = document.createElement('a');
+			link.href = imageUrl;
+			link.download = 'paint';
+			link.click();
 		},
 	},
 	mounted() {
@@ -132,31 +184,34 @@ export default {
 @import './assets/css/reset.css';
 #canvas {
 	display: block;
-	width: 700px;
+	width: 1000px;
 	height: 700px;
 	margin: 40px auto 0;
-	border: 1px solid #000;
+	box-shadow: 0px 0px 7px 1px #999;
 	background-color: #fff;
 }
 .handle-container {
 	width: 700px;
-	margin: 40px auto;
+	margin: 20px auto;
 	text-align: center;
+	h3 {
+		margin-bottom: 7px;
+	}
 }
 .color-list {
 	display: flex;
 	justify-content: center;
+	flex-wrap: wrap;
 	width: 700px;
-	margin: 0 auto;
+	margin: 20px auto;
 	li {
 		position: relative;
 		width: 30px;
 		height: 30px;
+		margin-right: 10px;
+		margin-top: 5px;
 		border-radius: 50%;
 		cursor: pointer;
-		+ li {
-			margin-left: 10px;
-		}
 		.icon {
 			display: none;
 			position: absolute;
@@ -175,18 +230,46 @@ export default {
 				display: block;
 			}
 		}
+		&.white {
+			border: 1px solid #999;
+		}
+	}
+}
+.color-edit {
+	input {
+		display: inline-block;
+		vertical-align: middle;
+		height: 30px;
+		padding: 0 10px;
+		border: 1px solid #ddd;
+		box-sizing: border-box;
+	}
+	button {
+		display: inline-block;
+		vertical-align: middle;
+		min-width: 50px;
+		height: 30px;
+		margin-left: 5px;
+		line-height: 28px;
+		border: 0;
+		color: #fff;
+		background-color: #222;
 	}
 }
 .btn-group {
-	margin: 20px;
+	margin-top: 10px;
 	.btn {
 		display: inline-block;
 		padding: 10px 20px;
-		border: 1px solid #222;
+		border: 1px solid #ddd;
+		border-radius: 8px;
 		font-size: 15px;
 		color: #222;
 		background-color: #fff;
 		cursor: pointer;
+		+ .btn {
+			margin-left: 10px;
+		}
 	}
 	.btn-fill {
 		&.active {
